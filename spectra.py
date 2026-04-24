@@ -1,6 +1,7 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.signal import savgol_filter
 
 '''
 There are several assumptions made in this code:
@@ -58,10 +59,24 @@ plt.plot(idx, wl_linear_fit, '-', linewidth=2, label='Linear Fit')
 plt.xlabel("Pixel Index")
 plt.ylabel("Wavelength (nm)")
 plt.legend()
-plt.show()
+plt.savefig('wavelength_fit.png', dpi=300)
 
 plt.figure(figsize=(12, 6))
 plt.plot(wl_linear_fit, v_flat, 'o', markersize=2, alpha=0.3)
 plt.xlabel("Wavelength (nm)")
 plt.ylabel("Value")
+plt.savefig('spectrum_scatter_plot.png', dpi=300)
+
+
+# Do the curve fitting
+order = np.argsort(wl_linear_fit)
+x = wl_linear_fit[order]
+y = v_flat[order]
+y_smooth = savgol_filter(y, window_length=41, polyorder=3)
+plt.figure(figsize=(12, 6))
+plt.plot(x, y_smooth, '-', linewidth=2)
+plt.xlabel("Wavelength (nm)")
+plt.ylabel("Value")
+plt.legend()
 plt.show()
+
