@@ -60,8 +60,13 @@ for col in cols:
 # plot all spectra
 plt.figure(figsize=(12, 6))
 
-for col, x, y_smooth in all_spectra:
-    plt.plot(x, y_smooth, linewidth=2, label=f"x={col}")
+
+cmap = plt.cm.viridis
+length = len(all_spectra)
+for i, (col, x, y_smooth) in enumerate(all_spectra):
+    color = cmap(i / (length - 1))
+    plt.plot(x, y_smooth, linewidth=2, label=f"x={col}", color = color)
+
 
 plt.xlabel("Wavelength (nm)")
 plt.ylabel("Value")
