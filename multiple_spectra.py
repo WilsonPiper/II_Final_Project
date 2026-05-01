@@ -8,7 +8,7 @@ from scipy.signal import savgol_filter
 VALID_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
 
 
-def compute_spectra(img_bgr, num_spectra=20, half_width=2):
+def compute_spectra(img_bgr, num_spectra=20, half_width=2, linear_wavelength_scale=False):
     height, width = img_bgr.shape[:2]
     if num_spectra is None:
         cols = np.arange(width, dtype=int)
@@ -22,17 +22,17 @@ def compute_spectra(img_bgr, num_spectra=20, half_width=2):
         vertical_slice = img_bgr[:, c1:c2, :]
 
         hsv_img = cv2.cvtColor(vertical_slice, cv2.COLOR_BGR2HSV)
-        h, _, v = cv2.split(hsv_img)
+        v_mean = np.nanmean(hsv_img[:, :, 2], axis=1)
 
-        h_mean = np.nanmean(h, axis=1)
-        v_mean = np.nanmean(v, axis=1)
-
-        hue_deg = h_mean.astype(float) * 2
-        hue_deg[hue_deg > 290] = np.nan
-
-        wavelength = 700 - (hue_deg / 290.0) * (611.28 - 392.58)
-
-        # Data source: https://colorspect.com/hue-wavl-convert.htm?rgb2_x=00AA00&col1_x=FF0000&hue_f=0.00&wavl_f=611.28
+        if linear_wavelength_scale:
+            # Linear spectral axis assignment.
+            wavelength = np.linspace(400.0, 700.0, len(v_mean), dtype=float)
+        else:
+            # Hue-based wavelength conversion.
+            h_mean = np.nanmean(hsv_img[:, :, 0], axis=1)
+            hue_deg = h_mean.astype(float) * 2
+            hue_deg[hue_deg > 270] = np.nan
+            wavelength = 700.0 - (hue_deg / 360.0) * (700.0 - 400.0)
         idx = np.arange(len(v_mean), dtype=float)
         v_flat = v_mean.astype(float)
         wl_flat = wavelength.astype(float)
@@ -150,6 +150,7 @@ def process_image(
     wavelength_step_nm=None,
     wavelength_grid=None,
     precomputed=None,
+    linear_wavelength_scale=False,
 ):
     image_out_dir = results_root / image_path.stem
     image_out_dir.mkdir(parents=True, exist_ok=True)
@@ -160,9 +161,14 @@ def process_image(
             print(f"Skipping unreadable image: {image_path}")
             return
         if vertical:
-            # Rotate 90 degrees clockwise before spectra extraction.
-            img_bgr = cv2.rotate(img_bgr, cv2.ROTATE_90_CLOCKWISE)
-        all_spectra, height = compute_spectra(img_bgr, num_spectra=num_spectra, half_width=half_width)
+            # Rotate 90 degrees counterclockwise before spectra extraction.
+            img_bgr = cv2.rotate(img_bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        all_spectra, height = compute_spectra(
+            img_bgr,
+            num_spectra=num_spectra,
+            half_width=half_width,
+            linear_wavelength_scale=linear_wavelength_scale,
+        )
     else:
         all_spectra = precomputed["all_spectra"]
         height = precomputed["height"]
@@ -187,6 +193,7 @@ def process_folder(
     vertical=False,
     plot_enabled=True,
     wavelength_step_nm=None,
+    linear_wavelength_scale=False,
 ):
     input_dir = Path(input_dir)
     if not input_dir.exists() or not input_dir.is_dir():
@@ -213,9 +220,14 @@ def process_folder(
             print(f"Skipping unreadable image: {image_path}")
             continue
         if vertical:
-            img_bgr = cv2.rotate(img_bgr, cv2.ROTATE_90_CLOCKWISE)
+            img_bgr = cv2.rotate(img_bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-        all_spectra, height = compute_spectra(img_bgr, num_spectra=num_spectra, half_width=half_width)
+        all_spectra, height = compute_spectra(
+            img_bgr,
+            num_spectra=num_spectra,
+            half_width=half_width,
+            linear_wavelength_scale=linear_wavelength_scale,
+        )
         wl_min, wl_max = get_image_wavelength_range(all_spectra)
         if wl_min is None or wl_max is None:
             print(f"Skipping image with no valid spectra: {image_path.name}")
@@ -244,9 +256,12 @@ def process_folder(
             wavelength_step_nm,
         )
     else:
-        first_path = next(iter(precomputed_by_path))
-        first_all = precomputed_by_path[first_path]["all_spectra"]
-        ref = np.sort(np.unique(np.concatenate([x for _, x, _ in first_all])))
+        # Use all images (not just first image) to avoid silently dropping endpoints.
+        all_wavelengths = []
+        for info in precomputed_by_path.values():
+            for _, x, _ in info["all_spectra"]:
+                all_wavelengths.append(np.asarray(x, dtype=float))
+        ref = np.sort(np.unique(np.concatenate(all_wavelengths)))
         common_grid = ref[(ref >= global_min) & (ref <= global_max)]
 
     if common_grid.size < 2:
@@ -272,17 +287,19 @@ def process_folder(
             wavelength_step_nm=wavelength_step_nm,
             wavelength_grid=common_grid,
             precomputed=precomputed,
+            linear_wavelength_scale=linear_wavelength_scale,
         )
 
 
 if __name__ == "__main__":
     # Parameters
-    INPUT_PATH = "segmented"
+    INPUT_PATH = "segmented_cropped"
     NUM_SPECTRA = None
     HALF_WIDTH = 0
     VERTICAL = True
     PLOT_ENABLED = False
     WAVELENGTH_STEP_NM = 5.0
+    LINEAR_WAVELENGTH_SCALE = True
 
     input_path = Path(INPUT_PATH)
     if input_path.is_dir():
@@ -293,6 +310,7 @@ if __name__ == "__main__":
             vertical=VERTICAL,
             plot_enabled=PLOT_ENABLED,
             wavelength_step_nm=WAVELENGTH_STEP_NM,
+            linear_wavelength_scale=LINEAR_WAVELENGTH_SCALE,
         )
     else:
         results_root = input_path.parent / "spectra_results"
@@ -305,4 +323,5 @@ if __name__ == "__main__":
             vertical=VERTICAL,
             plot_enabled=PLOT_ENABLED,
             wavelength_step_nm=WAVELENGTH_STEP_NM,
+            linear_wavelength_scale=LINEAR_WAVELENGTH_SCALE,
         )

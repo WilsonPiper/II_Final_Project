@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-SPECTRA_ROOT = Path("/Users/lxl/Desktop/Imaging Instrumentation/Segmentation/segmented/spectra_results")
+SPECTRA_ROOT = Path("/Users/lxl/Desktop/Imaging Instrumentation/Segmentation/segmented_cropped/spectra_results")
 CSV_NAME = "multiple_spectra.csv"
 OUTPUT_DIR = SPECTRA_ROOT.parent / "frequency_stacks"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -57,27 +57,37 @@ def load_cube(spectra_root):
         raise FileNotFoundError(f"No '{CSV_NAME}' files found under: {spectra_root}")
 
     ref_wl, ref_vals = read_csv_matrix(csv_paths[0])
-    min_freq = ref_vals.shape[0]
-    min_width = ref_vals.shape[1]
     matrices = [ref_vals]
 
     for csv_path in csv_paths[1:]:
-        _, vals = read_csv_matrix(csv_path)
+        wl, vals = read_csv_matrix(csv_path)
+        if len(wl) != len(ref_wl) or not np.allclose(wl, ref_wl, atol=1e-6):
+            raise ValueError(
+                f"Wavelength grid mismatch in {csv_path.parent.name}: "
+                f"expected {len(ref_wl)} rows matching reference."
+            )
+        if vals.shape[0] != ref_vals.shape[0]:
+            raise ValueError(
+                f"Frequency-row mismatch in {csv_path.parent.name}: "
+                f"expected {ref_vals.shape[0]}, got {vals.shape[0]}."
+            )
+        if vals.shape[1] != ref_vals.shape[1]:
+            raise ValueError(
+                f"Width mismatch in {csv_path.parent.name}: "
+                f"expected {ref_vals.shape[1]}, got {vals.shape[1]}."
+            )
         matrices.append(vals)
-        min_freq = min(min_freq, vals.shape[0])
-        min_width = min(min_width, vals.shape[1])
 
-    cube = np.stack([m[:min_freq, :min_width] for m in matrices], axis=0)
-    return cube, ref_wl[:min_freq]
+    cube = np.stack(matrices, axis=0)
+    return cube, ref_wl
 
 
 def save_frequency_images(cube, wavelengths, output_dir):
     # cube shape: (num_images, num_frequencies, width)
-    num_images, num_freq, width = cube.shape
+    _, num_freq, _ = cube.shape
 
     for fi in range(num_freq):
         matrix = cube[:, fi, :]  # (num_images, width)
-        matrix = matrix.reshape(num_images, width)
         m_min = float(np.min(matrix))
         m_max = float(np.max(matrix))
         if m_max > m_min:
@@ -107,7 +117,7 @@ def save_frequency_csvs(cube, wavelengths, output_dir):
     pixel_idx = np.tile(np.arange(width, dtype=np.int32), num_images)
 
     for fi in range(num_freq):
-        matrix = cube[:, fi, :].reshape(num_images, width)
+        matrix = cube[:, fi, :]
         intensity_milli = np.rint(matrix.reshape(-1) * 1000.0).astype(np.int32)
 
         out = np.column_stack((image_idx, pixel_idx, intensity_milli))
