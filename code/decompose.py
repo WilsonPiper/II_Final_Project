@@ -5,7 +5,7 @@ import numpy as np
 
 # Reference: https://www.geeksforgeeks.org/machine-learning/image-segmentation-using-k-means-clustering/
 
-SPECTRA_ROOT = Path("/Users/lxl/Desktop/Imaging Instrumentation/Segmentation/segmented_cropped/spectra_results")
+SPECTRA_ROOT = Path("/Users/lxl/Desktop/Imaging Instrumentation/Segmentation/segmented/spectra_results")
 CSV_NAME = "multiple_spectra.csv"
 OUTPUT_DIR = SPECTRA_ROOT.parent / "frequency_stacks"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

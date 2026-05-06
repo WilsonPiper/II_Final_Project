@@ -1,9 +1,13 @@
 Final project - Imaging Instrumentation
 ==============
 
-**Author:** *Sareena*, *Wilson*, and *Ruthika*
+**Author:** *Sareena*, *Wilson*, and *Ruthika*, advised under *Dr. Web Stayman*
 
-# A few flags to change/check before running
+# Repository Structure
+- [x] segmented: contain sample images to process (which are captured by our self-made spectrometer)
+- [x] code: contains code files (detailed explanation is provided in the following sections)
+
+# A few flags to check before running
 
 1. Check if the image is vertical or not on the original image. If vertical, set the rotation flag in multiple_spectra to be True. 
 2. Also, if rotation is needed, check if the image has blue on the left side or not. The inputted image needs to have blue on the left side.
@@ -70,13 +74,6 @@ Main constants to set:
 - `SPATIAL_WEIGHT_X`, `SPATIAL_WEIGHT_Y`: weights for spatial features
 - `VISUALIZE_NORMALIZED_FREQUENCIES`: optionally save normalized frequency figures
 - `NORMALIZED_FIGURE_DIR`: output directory for normalized frequency images
-
-## Standalone workflow (`index_calibration.py` + `reconstruction.py`)
-
-Note: the reconstruction script filename is `reconstruction.py` (not `reconstruiction.py`).
-
-This pair is standalone and does **not** depend on outputs from `multiple_spectra.py`, `decompose.py`, or `kmeans.py`.
-It works directly from a folder of `.npy` spectral frames.
 
 ## 4) `index_calibration.py`
 
