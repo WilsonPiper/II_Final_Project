@@ -7,6 +7,15 @@ from scipy.signal import savgol_filter
 
 VALID_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
 
+# Parameters
+INPUT_PATH = "segmented"
+NUM_SPECTRA = None
+HALF_WIDTH = 0
+VERTICAL = False
+PLOT_ENABLED = False
+WAVELENGTH_STEP_NM = 5.0
+LINEAR_WAVELENGTH_SCALE = True
+
 
 def compute_spectra(img_bgr, num_spectra=20, half_width=2, linear_wavelength_scale=False):
     height, width = img_bgr.shape[:2]
@@ -292,15 +301,6 @@ def process_folder(
 
 
 if __name__ == "__main__":
-    # Parameters
-    INPUT_PATH = "segmented_cropped"
-    NUM_SPECTRA = None
-    HALF_WIDTH = 0
-    VERTICAL = True
-    PLOT_ENABLED = False
-    WAVELENGTH_STEP_NM = 5.0
-    LINEAR_WAVELENGTH_SCALE = True
-
     input_path = Path(INPUT_PATH)
     if input_path.is_dir():
         process_folder(

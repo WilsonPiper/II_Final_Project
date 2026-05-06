@@ -3,6 +3,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Reference: https://www.geeksforgeeks.org/machine-learning/image-segmentation-using-k-means-clustering/
 
 SPECTRA_ROOT = Path("/Users/lxl/Desktop/Imaging Instrumentation/Segmentation/segmented_cropped/spectra_results")
 CSV_NAME = "multiple_spectra.csv"
